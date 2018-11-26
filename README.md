@@ -2,8 +2,7 @@
 It's the app for the second round of VK Mobile Dev Challenge. The task was to make VK feed with search. 
 
 __Requirements__
-	No third party libraries.
- 
+* No third party libraries.
 * Support photo attachments.
 * If text is larger than 8 lines, show expand button after 6 lines.
 * Show actual likes/comments/reposts/views amount.
