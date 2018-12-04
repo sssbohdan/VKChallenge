@@ -22,6 +22,53 @@ private struct Constants {
 }
 
 final class FeedItemCollectionViewCell: UICollectionViewCell, NibReusable {
+    final class ViewModel {
+        let username: String
+        let userImageUrl: URL?
+        let shouldShowMoreButton: Bool
+        let textHeight: CGFloat
+        let date: String
+        let text: String
+        let likes: String
+        let reposts: String
+        let comments: String
+        let views: String
+        let queryKeyWords: [String]
+        let photos: [Photo]
+        let containerWidth: CGFloat
+        let index: Int
+        
+        init(username: String,
+             userImageUrl: URL?,
+             shouldShowMoreButton: Bool,
+             textHeight: CGFloat,
+             date: String,
+             text: String,
+             likes: String,
+             reposts: String,
+             comments: String,
+             views: String,
+             queryKeyWords: [String],
+             photos: [Photo],
+             containerWidth: CGFloat,
+             index: Int) {
+            self.username = username
+            self.userImageUrl = userImageUrl
+            self.shouldShowMoreButton = shouldShowMoreButton
+            self.textHeight = textHeight
+            self.date = date
+            self.text = text
+            self.likes = likes
+            self.reposts = reposts
+            self.comments = comments
+            self.views = views
+            self.queryKeyWords = queryKeyWords
+            self.photos = photos
+            self.containerWidth = containerWidth
+            self.index = index
+        }
+    }
+    
     @IBOutlet private weak var userImageView: UIImageView!
     @IBOutlet private weak var usernameLabel: UILabel!
     @IBOutlet private weak var dateLabel: UILabel!
@@ -52,8 +99,9 @@ final class FeedItemCollectionViewCell: UICollectionViewCell, NibReusable {
     @IBOutlet private var statsViewToShowMoreButtonTopConstraint: NSLayoutConstraint!
     
     var didTapShowMoreButton: (() -> Void)?
+    
     private lazy var photoView = PhotoView(frame: .zero)
-    private lazy var font = UIFont.systemFont(ofSize: 14)
+    static var font = UIFont.systemFont(ofSize: 14)
     private var index: Int?
     
     override func awakeFromNib() {
@@ -70,53 +118,39 @@ final class FeedItemCollectionViewCell: UICollectionViewCell, NibReusable {
         self.userImageView.image = nil
     }
     
-    func configure(username: String,
-                   userImageUrl: URL?,
-                   shouldShowMoreButton: Bool,
-                   textHeight: CGFloat,
-                   date: String,
-                   text: String,
-                   likes: String,
-                   reposts: String,
-                   comments: String,
-                   views: String,
-                   queryKeyWords: [String],
-        likesImage: UIImage,
-        commentsImage: UIImage,
-        repostsImage: UIImage,
-        viewsImage: UIImage,
-        photos: [Photo],
-        containerWidth: CGFloat,
-        index: Int) {
+    func configure(viewModel: FeedItemCollectionViewCell.ViewModel,
+                   likesImage: UIImage,
+                   commentsImage: UIImage,
+                   repostsImage: UIImage,
+                   viewsImage: UIImage) {
         self.likesImageView.image = likesImage
         self.commentsImageView.image = commentsImage
         self.repostsImageView.image = repostsImage
         self.viewsImageView.image = viewsImage
-        self.likesCountLabel.text = likes
-        self.commentsCountLabel.text = comments
-        self.repostsCountLabel.text = reposts
-        self.viewsCountLabel.text = views
-        let attributedText = NSAttributedString(base: text,
-                                                keyWords: queryKeyWords,
-                                                foregroundColor: UIColor.FeedItemCell.text, font: font,
+        self.likesCountLabel.text = viewModel.likes
+        self.commentsCountLabel.text = viewModel.comments
+        self.repostsCountLabel.text = viewModel.reposts
+        self.viewsCountLabel.text = viewModel.views
+        let attributedText = NSAttributedString(base: viewModel.text,
+                                                keyWords: viewModel.queryKeyWords,
+                                                foregroundColor: UIColor.FeedItemCell.text, font: FeedItemCollectionViewCell.font,
                                                 highlightForeground: UIColor.FeedItemCell.highlighTextForeground,
                                                 highlighBackground: UIColor.FeedItemCell.highlighTextBackground)
         self.textView.attributedText = attributedText
-        self.usernameLabel.text = username
-        self.userImageView.setImage(url: userImageUrl)
-        self.dateLabel.text = date
+        self.usernameLabel.text = viewModel.username
+        self.userImageView.setImage(url: viewModel.userImageUrl)
+        self.dateLabel.text = viewModel.date
         self.dateLabel.textColor = UIColor.FeedItemCell.date
-        let photoViewHeight = PhotoView.determineHeight(photos: photos, containerWidth: containerWidth, index: index)
-        self.photoView.update(photos: photos, totalHeight: photoViewHeight)
+        let photoViewHeight = PhotoView.determineHeight(photos: viewModel.photos, containerWidth: viewModel.containerWidth, index: viewModel.index)
+        self.photoView.update(photos: viewModel.photos, totalHeight: photoViewHeight)
         
-        self.showMoreButtonHeightConstraint.constant = shouldShowMoreButton ? Constants.showMoreButtonHeight : 0
-        self.showMoreButtonTopConstraint.constant = shouldShowMoreButton ? 0 : 0
-        self.showMoreButtonBottomConstraint.constant = shouldShowMoreButton ? Constants.showMoreButtonBottom : Constants.showMoreButtonBottomDefault
+        self.showMoreButtonHeightConstraint.constant = viewModel.shouldShowMoreButton ? Constants.showMoreButtonHeight : 0
+        self.showMoreButtonTopConstraint.constant = viewModel.shouldShowMoreButton ? 0 : 0
+        self.showMoreButtonBottomConstraint.constant = viewModel.shouldShowMoreButton ? Constants.showMoreButtonBottom : Constants.showMoreButtonBottomDefault
         
-        self.textViewTopConstraint.constant = text.isEmpty ? 0 : Constants.textViewTop
-        self.textViewHeight.constant = textHeight
+        self.textViewTopConstraint.constant = viewModel.text.isEmpty ? 0 : Constants.textViewTop
+        self.textViewHeight.constant = viewModel.textHeight
         self.photosHolderViewHeightConstraint.constant = photoViewHeight
-        print("configure \(index)")
     }
     
     static func determineHeight(text: String,
@@ -163,8 +197,8 @@ private extension FeedItemCollectionViewCell {
         }
         
         [self.likesCountLabel,
-        self.commentsCountLabel,
-        self.repostsCountLabel]
+         self.commentsCountLabel,
+         self.repostsCountLabel]
             .forEach {
                 $0?.textColor = UIColor.FeedItemCell.likes
         }

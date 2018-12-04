@@ -182,9 +182,7 @@
 			children = (
 				2526F9272196C4750024C173 /* Reusable */,
 				2526F9262196C46B0024C173 /* Cells */,
-				2585D94421986004003E8926 /* UITextViewFixed.swift */,
-				2585D94621987876003E8926 /* PhotoView.swift */,
-				25C9B4F0219DC343002F82FC /* SmoothCollectionViewCell.swift */,
+				25DC200221B5A4DE00ED0969 /* Views */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -212,6 +210,7 @@
 		2526F9262196C46B0024C173 /* Cells */ = {
 			isa = PBXGroup;
 			children = (
+				25C9B4F0219DC343002F82FC /* SmoothCollectionViewCell.swift */,
 				2549D674219C320C00A6E981 /* Table */,
 				2526F91E2196C4000024C173 /* Collection */,
 			);
@@ -422,6 +421,15 @@
 				2526F9342196C78E0024C173 /* User.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		25DC200221B5A4DE00ED0969 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				2585D94421986004003E8926 /* UITextViewFixed.swift */,
+				2585D94621987876003E8926 /* PhotoView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		7C11059CD0BC730B00C528A2 /* Frameworks */ = {

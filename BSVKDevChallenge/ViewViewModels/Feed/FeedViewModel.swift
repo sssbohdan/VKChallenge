@@ -27,27 +27,26 @@ protocol FeedViewModel: ViewModel {
     var didFinishLoadUser: ((User) -> Void)? { get set }
     var didEndRefreshing: (() -> Void)? { get set }
     
+    func feedItemCellViewModel(at index: Int) -> FeedItemCollectionViewCell.ViewModel
     func loginIfNeeded()
-    func username(at index: Int) -> String
-    func userImageURL(at index: Int) -> URL?
-    func date(at index: Int) -> String
     func text(at index: Int) -> String
     func likes(at index: Int) -> String
     func reposts(at index: Int) -> String
     func comments(at index: Int) -> String
     func views(at index: Int) -> String
     func photos(at index: Int) -> [Photo]
-    func textViewHeight(at index: Int, textViewWidth: CGFloat) -> CGFloat
-    func shouldShowShowMoreButton(at index: Int, textViewWidth: CGFloat) -> Bool
+    func textViewHeight(at index: Int) -> CGFloat
+    func shouldShowShowMoreButton(at index: Int) -> Bool
     func currentUserImageURL() -> URL?
     func loadFeeds()
     func showMore(at index: Int)
     func refresh()
-    
+    func setTextViewWidth(_ textViewWidth: CGFloat, containerWidth: CGFloat)
     func search(query: String)
+    func heightForItem(at index: Int) -> CGFloat
 }
 
-final class FeedViewModelImpl: FeedViewModel {
+final class FeedViewModelImpl: BaseViewModel, FeedViewModel {
     var feedsCount: Int { return self.feedItems.count }
     var appliedQuery = "" {
         didSet {
@@ -60,7 +59,6 @@ final class FeedViewModelImpl: FeedViewModel {
     lazy var unappliedQuery = ""
     lazy var queryKeyWords = [String]()
     
-    var dataWasUpdated: (() -> Void)?
     var didLoginSuccessfully: (() -> Void)?
     var onAuthorizationError: (() -> Void)?
     var didFinishLoadUser: ((User) -> Void)?
@@ -74,17 +72,23 @@ final class FeedViewModelImpl: FeedViewModel {
     private lazy var usersSet = Set<User>()
     private lazy var groupsSet = Set<Group>()
     private lazy var sources = [Int: Sourcable]()
-    private lazy var showMoreCache = [Int: Bool]()
     private lazy var isLoadingNextPage = false
     private var currentUser: User?
     private var oneLineHeight: CGFloat?
     private var feedStrategy: FeedStrategy
     private var usersFeedStrategy: UsersFeedStrategy
+    private var textViewWidth: CGFloat = 0
+    private var containerWidth: CGFloat = 0
+    
+    private lazy var showMoreDict = [Int: Bool]()
+    private lazy var feedItemsCellsViewModelsCache = NSCache<NSNumber, FeedItemCollectionViewCell.ViewModel>()
     
     init(networkManager: NetworkManager) {
         self.networkManager = networkManager
         self.usersFeedStrategy = UsersFeedStrategy(networkManager: networkManager)
         self.feedStrategy = self.usersFeedStrategy
+
+        super.init()
         
         VKSDKManager.shared.onAuthSuccess = strongify(weak: self) { `self` in
             self.loginIfNeeded()
@@ -93,6 +97,10 @@ final class FeedViewModelImpl: FeedViewModel {
         VKSDKManager.shared.onAuthError = strongify(weak: self) { `self` in
             self.onAuthorizationError?()
         }
+    }
+    
+    override func didReceiveMemoryWarning() {
+        self.feedItemsCellsViewModelsCache.removeAllObjects()
     }
     
     func loginIfNeeded() {
@@ -170,34 +178,35 @@ final class FeedViewModelImpl: FeedViewModel {
         return self.feedItems[index].photos
     }
     
-    func shouldShowShowMoreButton(at index: Int, textViewWidth: CGFloat) -> Bool {
+    func shouldShowShowMoreButton(at index: Int) -> Bool {
         let text = self.feedItems[index].text
-        guard !text.isEmpty, self.showMoreCache[index] != true else { return false }
+        guard !text.isEmpty, self.showMoreDict[index] != true else { return false }
 
-        let height = text.height(withConstrainedWidth: textViewWidth, font: Constants.textFont)
+        let height = text.height(withConstrainedWidth: self.textViewWidth, font: Constants.textFont)
         let oneLineHeight = self.calculateOneLineHeight(for: textViewWidth)
         
         let lines = height / oneLineHeight
         return lines > Constants.maxTextLines
     }
     
-    func textViewHeight(at index: Int, textViewWidth: CGFloat) -> CGFloat {
+    func textViewHeight(at index: Int) -> CGFloat {
         let text = self.feedItems[index].text
         
         guard !text.isEmpty else { return 0 }
-        let real = text.height(withConstrainedWidth: textViewWidth, font: Constants.textFont)
+        let real = text.height(withConstrainedWidth: self.textViewWidth, font: Constants.textFont)
 
-        if self.showMoreCache[index] == true {
+        if self.showMoreDict[index] == true {
             return real
         } else {
-            let oneLineHeight = self.calculateOneLineHeight(for: textViewWidth)
+            let oneLineHeight = self.calculateOneLineHeight(for: self.textViewWidth)
             let max = (oneLineHeight * Constants.showMoreButtonAfter) + 0.5
             return min(max, real)
         }
     }
     
     func showMore(at index: Int) {
-        self.showMoreCache[index] = true
+        self.showMoreDict[index] = true
+        self.feedItemsCellsViewModelsCache.removeObject(forKey: index as NSNumber)
         self.shouldReloadFeedItem?(index)
     }
     
@@ -225,7 +234,8 @@ final class FeedViewModelImpl: FeedViewModel {
             ? self.usersFeedStrategy
             : SearchFeedStrategy(networkManager: self.networkManager, query: query)
         self.dataWasUpdated?()
-        
+        self.feedItemsCellsViewModelsCache.removeAllObjects()
+
         if self.feedStrategy.requireFeedLoading {
             self.loadFeeds()
         }
@@ -237,15 +247,55 @@ final class FeedViewModelImpl: FeedViewModel {
         self.usersSet = []
         self.groupsSet = []
         self.sources = [:]
-        self.showMoreCache = [:]
+        self.showMoreDict = [:]
         self.dataWasUpdated?()
         self.loadFeeds()
         self.loadUser()
+    }
+    
+    func feedItemCellViewModel(at index: Int) -> FeedItemCollectionViewCell.ViewModel {
+        if let viewModel = self.feedItemsCellsViewModelsCache.object(forKey: index as NSNumber) {
+            return viewModel
+        }
+        
+        let shouldShow = self.shouldShowShowMoreButton(at: index)
+        let textHeight = self.textViewHeight(at: index)
+        let username = self.username(at: index)
+        let userImageURL = self.userImageURL(at: index)
+        let date = self.date(at: index)
+        let text = self.text(at: index)
+        let likes = self.likes(at: index)
+        let reposts = self.reposts(at: index)
+        let comments = self.comments(at: index)
+        let views = self.views(at: index)
+        let photos = self.photos(at: index)
+        let viewModel = FeedItemCollectionViewCell.ViewModel(username: username, userImageUrl: userImageURL, shouldShowMoreButton: shouldShow, textHeight: textHeight, date: date, text: text, likes: likes, reposts: reposts, comments: comments, views: views, queryKeyWords: queryKeyWords, photos: photos, containerWidth: containerWidth, index: index)
+        self.cacheCellViewModel(viewModel, at: index)
+        
+        return viewModel
+    }
+    
+    func setTextViewWidth(_ textViewWidth: CGFloat, containerWidth: CGFloat) {
+        self.textViewWidth = textViewWidth
+        self.containerWidth = containerWidth
+    }
+    
+    func heightForItem(at index: Int) -> CGFloat {
+        let shouldShow = self.shouldShowShowMoreButton(at: index)
+        let textHeight = self.textViewHeight(at: index)
+        let height = FeedItemCollectionViewCell.determineHeight(text: self.text(at: index), shouldShowMoreButton: shouldShow, textHeight: textHeight, photos: self.photos(at: index), containerWidth: self.containerWidth, index: index)
+        return height
     }
 }
 
 // MARK: - Private
 private extension FeedViewModelImpl {
+    func cacheCellViewModel(_ viewModel: FeedItemCollectionViewCell.ViewModel, at index: Int) {
+        DispatchQueue.global(qos: .default).async {
+            self.feedItemsCellsViewModelsCache.setObject(viewModel, forKey: index as NSNumber)
+        }
+    }
+    
     func updateUI() {
         DispatchQueue.main.async {
             self.didEndRefreshing?()

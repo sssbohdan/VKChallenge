@@ -40,13 +40,20 @@ final class FeedViewController<T: FeedViewModel>: ViewController<T>,
     private let viewsImage = UIImage(named: "views")!.withRenderingMode(.alwaysTemplate)
     private var textViewWidth: CGFloat?
     private let refresher = UIRefreshControl()
-
+    private lazy var rowsHeightsCache = NSCache<NSNumber, NSNumber>()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
         VKSDKManager.shared.uiDelegate = self
         self.viewModel.loginIfNeeded()
+    }
+    
+    override func performOnceInViewDidAppear() {
+        let textViewWidth = self.collectionView.bounds.width - Constants.collectionInsets.horizontal - Constants.feedItemCellTextOffset
+        let containerWidth = self.collectionView.bounds.width - Constants.collectionInsets.horizontal
+        self.viewModel.setTextViewWidth(textViewWidth, containerWidth: containerWidth)
+        self.collectionView.setDelegateAndDatasource(to: self)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -112,7 +119,6 @@ final class FeedViewController<T: FeedViewModel>: ViewController<T>,
     override func configureUI() {
         super.configureUI()
         
-        self.collectionView.setDelegateAndDatasource(to: self)
         self.view.backgroundColor = UIColor.Feeds.background
         self.collectionView.backgroundColor = .clear
         self.collectionView.register(FeedItemCollectionViewCell.self)
@@ -195,37 +201,11 @@ final class FeedViewController<T: FeedViewModel>: ViewController<T>,
     private func feedItemCell(for indexPath: IndexPath) -> UICollectionViewCell {
         let cell = self.collectionView.dequeueReusableCell(for: indexPath, cellType: FeedItemCollectionViewCell.self)
         let row = indexPath.row
-        let textViewWidth = self.collectionView.bounds.width - Constants.collectionInsets.horizontal - Constants.feedItemCellTextOffset
-        let shouldShow = self.viewModel.shouldShowShowMoreButton(at: indexPath.row, textViewWidth: textViewWidth)
-        let textHeight = self.viewModel.textViewHeight(at: indexPath.row, textViewWidth: textViewWidth)
-        let username = self.viewModel.username(at: row)
-        let userImageURL = self.viewModel.userImageURL(at: row)
-        let date = self.viewModel.date(at: row)
-        let text = self.viewModel.text(at: row)
-        let likes = self.viewModel.likes(at: row)
-        let reposts = self.viewModel.reposts(at: row)
-        let comments = self.viewModel.comments(at: row)
-        let views = self.viewModel.views(at: row)
-        let photos = self.viewModel.photos(at: row)
-        
-        cell.configure(username: username,
-                       userImageUrl: userImageURL,
-                       shouldShowMoreButton: shouldShow,
-                       textHeight: textHeight,
-                       date: date,
-                       text: text,
-                       likes: likes,
-                       reposts: reposts,
-                       comments: comments,
-                       views: views,
-                       queryKeyWords: self.viewModel.queryKeyWords,
+        cell.configure(viewModel: self.viewModel.feedItemCellViewModel(at: row),
                        likesImage: self.likesImage,
                        commentsImage: self.commentsImage,
                        repostsImage: self.repostsImage,
-                       viewsImage: self.viewsImage,
-                       photos: photos,
-                       containerWidth: self.collectionView.bounds.width - Constants.collectionInsets.horizontal, index: row)
-        
+                       viewsImage: self.viewsImage)
         
         cell.didTapShowMoreButton = strongify(weak: self) { `self` in
             self.viewModel.showMore(at: indexPath.row)
@@ -238,11 +218,8 @@ final class FeedViewController<T: FeedViewModel>: ViewController<T>,
         let section = self.sections[indexPath.section]
         switch section {
         case .feeds:
-            let textViewWidth = collectionView.bounds.width - Constants.collectionInsets.horizontal - Constants.feedItemCellTextOffset
-            let shouldShow = self.viewModel.shouldShowShowMoreButton(at: indexPath.row, textViewWidth: textViewWidth)
-            let textHeight = self.viewModel.textViewHeight(at: indexPath.row, textViewWidth: textViewWidth)
-            let height = FeedItemCollectionViewCell.determineHeight(text: self.viewModel.text(at: indexPath.item), shouldShowMoreButton: shouldShow, textHeight: textHeight, photos: self.viewModel.photos(at: indexPath.row), containerWidth: collectionView.bounds.width - Constants.collectionInsets.horizontal, index: indexPath.row)
-            return CGSize(width: collectionView.bounds.width - Constants.collectionInsets.horizontal, height: height)
+            print("calculate height for \(indexPath.row)")
+            return CGSize(width: collectionView.bounds.width - Constants.collectionInsets.horizontal, height: self.viewModel.heightForItem(at: indexPath.item))
         case .loaded:
             return CGSize(width: collectionView.bounds.width, height: Constants.loadedCellHeight)
         case .search:

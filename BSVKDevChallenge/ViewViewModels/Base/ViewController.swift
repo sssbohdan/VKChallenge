@@ -10,6 +10,7 @@ import UIKit
 
 /// - warning: Abstract - don't create instance of this class.
 class ViewController<T: ViewModel>: UIViewController {
+    private lazy var viewDidAppearWasCalled = false
     let viewModel: T
     
     init(viewModel: T) {
@@ -33,6 +34,19 @@ class ViewController<T: ViewModel>: UIViewController {
         self.configureBindnig()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        defer { self.viewDidAppearWasCalled = true }
+        
+        if !self.viewDidAppearWasCalled {
+            self.performOnceInViewDidAppear()
+        }
+    }
+    
+    override func didReceiveMemoryWarning() {
+        self.viewModel.didReceiveMemoryWarning()
+    }
+    
     deinit {
         print("☠️", self)
     }
@@ -47,6 +61,10 @@ class ViewController<T: ViewModel>: UIViewController {
     }
     
     func configureBindnig() {
+        
+    }
+    
+    func performOnceInViewDidAppear() {
         
     }
 }
