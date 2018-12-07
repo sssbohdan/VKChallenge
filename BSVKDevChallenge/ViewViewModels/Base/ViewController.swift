@@ -61,7 +61,11 @@ class ViewController<T: ViewModel>: UIViewController {
     }
     
     func configureBindnig() {
-        
+        self.viewModel.shouldPop = self.navigationController?.popViewController
+        self.viewModel.shouldPush = self.navigationController?.pushViewController
+        self.viewModel.shouldPresent = self.navigationController?.present
+        self.viewModel.shouldPopToRoot = self.navigationController?.popToRootViewController
+        self.viewModel.shouldDismmiss = self.navigationController?.dismiss
     }
     
     func performOnceInViewDidAppear() {
