@@ -44,6 +44,7 @@ protocol FeedViewModel: ViewModel {
     func setTextViewWidth(_ textViewWidth: CGFloat, containerWidth: CGFloat)
     func search(query: String)
     func heightForItem(at index: Int) -> CGFloat
+    func prefetchCellViewModel(at index: Int)
 }
 
 final class FeedViewModelImpl: BaseViewModel, FeedViewModel {
@@ -258,6 +259,14 @@ final class FeedViewModelImpl: BaseViewModel, FeedViewModel {
             return viewModel
         }
         
+        
+        let viewModel = self.createFeedCellViewModel(for: index)
+        self.cacheCellViewModel(viewModel, at: index)
+
+        return viewModel
+    }
+    
+    func createFeedCellViewModel(for index: Int) -> FeedItemCollectionViewCell.ViewModel {
         let shouldShow = self.shouldShowShowMoreButton(at: index)
         let textHeight = self.textViewHeight(at: index)
         let username = self.username(at: index)
@@ -270,7 +279,6 @@ final class FeedViewModelImpl: BaseViewModel, FeedViewModel {
         let views = self.views(at: index)
         let photos = self.photos(at: index)
         let viewModel = FeedItemCollectionViewCell.ViewModel(username: username, userImageUrl: userImageURL, shouldShowMoreButton: shouldShow, textHeight: textHeight, date: date, text: text, likes: likes, reposts: reposts, comments: comments, views: views, queryKeyWords: queryKeyWords, photos: photos, containerWidth: containerWidth, index: index)
-        self.cacheCellViewModel(viewModel, at: index)
         
         return viewModel
     }
@@ -285,6 +293,15 @@ final class FeedViewModelImpl: BaseViewModel, FeedViewModel {
         let textHeight = self.textViewHeight(at: index)
         let height = FeedItemCollectionViewCell.determineHeight(text: self.text(at: index), shouldShowMoreButton: shouldShow, textHeight: textHeight, photos: self.photos(at: index), containerWidth: self.containerWidth, index: index)
         return height
+    }
+    
+    func prefetchCellViewModel(at index: Int) {
+        DispatchQueue.global(qos: .default).async {
+            if self.feedItemsCellsViewModelsCache.object(forKey: index as NSNumber) == nil {
+                let viewModel = self.createFeedCellViewModel(for: index)
+                self.cacheCellViewModel(viewModel, at: index)
+            }
+        }
     }
 }
 

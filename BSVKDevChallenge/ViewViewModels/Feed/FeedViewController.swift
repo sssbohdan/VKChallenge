@@ -17,7 +17,7 @@ private enum Section: CaseIterable {
 
 private struct Constants {
     static var collectionInsets: UIEdgeInsets {
-        return UIEdgeInsets(top: 12, left: 8, bottom: 0, right: 8)
+        return UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)
     }
     
     static var loadedCellHeight: CGFloat { return 64 }
@@ -30,8 +30,9 @@ final class FeedViewController<T: FeedViewModel>: ViewController<T>,
     VKSdkUIDelegate,
     UICollectionViewDelegate,
     UICollectionViewDataSource,
-    UICollectionViewDelegateFlowLayout
-{
+    UICollectionViewDelegateFlowLayout,
+UICollectionViewDataSourcePrefetching {
+    
     private lazy var collectionView = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
     private lazy var sections = Section.allCases
     private let likesImage = UIImage(named: "likes")!.withRenderingMode(.alwaysTemplate)
@@ -70,10 +71,13 @@ final class FeedViewController<T: FeedViewModel>: ViewController<T>,
         
         self.collectionView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor).isActive = true
         self.collectionView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor).isActive = true
+        self.automaticallyAdjustsScrollViewInsets = false
         if #available(iOS 11.0, *) {
             self.collectionView.topAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.topAnchor).isActive = true
         } else {
-            self.collectionView.topAnchor.constraint(equalTo: self.view.topAnchor).isActive = true
+            let cons = self.collectionView.topAnchor.constraint(equalTo: self.topLayoutGuide.topAnchor)
+            cons.constant = 20
+            cons.isActive = true
         }
         
         self.collectionView.bottomAnchor.constraint(equalTo: self.view.bottomAnchor).isActive = true
@@ -213,12 +217,16 @@ final class FeedViewController<T: FeedViewModel>: ViewController<T>,
         return cell
     }
     
+    // MARK: - UICollectionViewDataSourcePrefetching
+    func collectionView(_ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath]) {
+        
+    }
+    
     // MARK: - UICollectionViewDelegateFlowLayout
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         let section = self.sections[indexPath.section]
         switch section {
         case .feeds:
-            print("calculate height for \(indexPath.row)")
             return CGSize(width: collectionView.bounds.width - Constants.collectionInsets.horizontal, height: self.viewModel.heightForItem(at: indexPath.item))
         case .loaded:
             return CGSize(width: collectionView.bounds.width, height: Constants.loadedCellHeight)
