@@ -125,7 +125,7 @@ UICollectionViewDataSourcePrefetching {
         
         self.view.backgroundColor = UIColor.Feeds.background
         self.collectionView.backgroundColor = .clear
-        self.collectionView.register(FeedItemCollectionViewCell.self)
+        self.collectionView.register(FeedItemCollectionViewCell.self, forCellWithReuseIdentifier: String(describing: FeedItemCollectionViewCell.self))
         self.collectionView.register(SearchCollectionViewCell.self)
         self.collectionView.register(LoadedCollectionViewCell.self)
         
@@ -203,7 +203,7 @@ UICollectionViewDataSourcePrefetching {
     }
     
     private func feedItemCell(for indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = self.collectionView.dequeueReusableCell(for: indexPath, cellType: FeedItemCollectionViewCell.self)
+        let cell = self.collectionView.dequeueReusableCell(withReuseIdentifier: String(describing: FeedItemCollectionViewCell.self), for: indexPath) as! FeedItemCollectionViewCell
         let row = indexPath.row
         cell.configure(viewModel: self.viewModel.feedItemCellViewModel(at: row),
                        likesImage: self.likesImage,
@@ -227,7 +227,7 @@ UICollectionViewDataSourcePrefetching {
         let section = self.sections[indexPath.section]
         switch section {
         case .feeds:
-            return CGSize(width: collectionView.bounds.width - Constants.collectionInsets.horizontal, height: self.viewModel.heightForItem(at: indexPath.item))
+            return CGSize(width: collectionView.bounds.width - Constants.collectionInsets.vertical, height: self.viewModel.heightForItem(at: indexPath.item))
         case .loaded:
             return CGSize(width: collectionView.bounds.width, height: Constants.loadedCellHeight)
         case .search:
