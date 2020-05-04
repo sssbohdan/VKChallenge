@@ -1,8 +1,8 @@
 //
-//  FeedI.swift
+//  FeedItemCollectionViewCell.swift
 //  BSVKDevChallenge
 //
-//  Created by bbb on 12/10/18.
+//  Created by bbb on 11/10/18.
 //  Copyright © 2018 bbb. All rights reserved.
 //
 
@@ -19,10 +19,9 @@ private struct Constants {
     static var statsTop: CGFloat { return 4 }
     static var defaultCornerRadius: CGFloat { return 10 }
     static var showMoreButtonBottomDefault: CGFloat { return 4 }
-    static var infoButtonWidth: CGFloat { return 18 }
 }
 
-final class FeedItemCollectionViewCell: UICollectionViewCell {
+final class FeedItemCollectionViewCell: UICollectionViewCell, NibReusable {
     final class ViewModel {
         let username: String
         let userImageUrl: URL?
@@ -69,45 +68,46 @@ final class FeedItemCollectionViewCell: UICollectionViewCell {
             self.index = index
         }
     }
-    private lazy var userImageView = UIImageView()
-    private lazy var usernameLabel = UILabel()
-    private lazy var dateLabel = UILabel()
-    private lazy var textView = UITextViewFixed()
-    private lazy var likesCountLabel = UILabel()
-    private lazy var commentsCountLabel = UILabel()
-    private lazy var repostsCountLabel = UILabel()
-    private lazy var viewsCountLabel = UILabel()
-    private lazy var likesImageView = UIImageView()
-    private lazy var commentsImageView = UIImageView()
-    private lazy var repostsImageView = UIImageView()
-    private lazy var viewsImageView = UIImageView()
-    private lazy var showMoreButton = UIButton()
-    private lazy var photosHolderView = UIView()
-    private lazy var feedInfoHolderView = UIView()
     
-    private lazy var textViewHeight: CGFloat = 0
-    private lazy var photosHolderHeight: CGFloat = 0
-    private lazy var shouldShowMoreButton = false
-    private lazy var photoView = PhotoView(frame: .zero)
-    static var font = UIFont.systemFont(ofSize: 14)
-    private var index: Int?
-    private let leftInfoAspectRatio: CGFloat = 2.5 / 4
+    @IBOutlet private weak var userImageView: UIImageView!
+    @IBOutlet private weak var usernameLabel: UILabel!
+    @IBOutlet private weak var dateLabel: UILabel!
+    @IBOutlet private weak var textView: UITextViewFixed!
+    @IBOutlet private weak var likesCountLabel: UILabel!
+    @IBOutlet private weak var commentsCountLabel: UILabel!
+    @IBOutlet private weak var repostsCountLabel: UILabel!
+    @IBOutlet private weak var viewsCountLabel: UILabel!
+    @IBOutlet private weak var likesImageView: UIImageView!
+    @IBOutlet private weak var commentsImageView: UIImageView!
+    @IBOutlet private weak var repostsImageView: UIImageView!
+    @IBOutlet private weak var viewsImageView: UIImageView!
+    @IBOutlet private weak var showMoreButton: UIButton!
+    @IBOutlet private weak var photosHolderView: UIView!
+    
+    @IBOutlet private var showMoreButtonHeightConstraint: NSLayoutConstraint!
+    @IBOutlet private var showMoreButtonTopConstraint: NSLayoutConstraint!
+    @IBOutlet private var showMoreButtonBottomConstraint: NSLayoutConstraint!
+    
+    @IBOutlet private var textViewTopConstraint: NSLayoutConstraint!
+    @IBOutlet private var textViewHeight: NSLayoutConstraint!
+    
+    @IBOutlet private var photosHolderViewHeightConstraint: NSLayoutConstraint!
+    @IBOutlet private var photosHolderToTextTopConstraint: NSLayoutConstraint!
+    @IBOutlet private var photosHolderToImageTopConstraint: NSLayoutConstraint!
+    
+    @IBOutlet private var statsViewToPhotosTopConstraint: NSLayoutConstraint!
+    @IBOutlet private var statsViewToShowMoreButtonTopConstraint: NSLayoutConstraint!
     
     var didTapShowMoreButton: (() -> Void)?
     
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-       
-        self.configureUI()
-    }
-    required init?(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+    private lazy var photoView = PhotoView(frame: .zero)
+    static var font = UIFont.systemFont(ofSize: 14)
+    private var index: Int?
     
-    override func layoutSubviews() {
-        super.layoutSubviews()
+    override func awakeFromNib() {
+        super.awakeFromNib()
         
-        self.layout()
+        self.configureUI()
     }
     
     override func prepareForReuse() {
@@ -116,8 +116,6 @@ final class FeedItemCollectionViewCell: UICollectionViewCell {
         self.index = nil
         self.userImageView.cancelLoad()
         self.userImageView.image = nil
-        self.textViewHeight = 0
-        self.photosHolderHeight = 0
     }
     
     func configure(viewModel: FeedItemCollectionViewCell.ViewModel,
@@ -125,10 +123,6 @@ final class FeedItemCollectionViewCell: UICollectionViewCell {
                    commentsImage: UIImage,
                    repostsImage: UIImage,
                    viewsImage: UIImage) {
-        self.textViewHeight = viewModel.textHeight
-        self.photosHolderHeight = PhotoView.determineHeight(photos: viewModel.photos, containerWidth: viewModel.containerWidth, index: viewModel.index)
-        self.shouldShowMoreButton = viewModel.shouldShowMoreButton
-        self.index = viewModel.index
         self.likesImageView.image = likesImage
         self.commentsImageView.image = commentsImage
         self.repostsImageView.image = repostsImage
@@ -147,15 +141,18 @@ final class FeedItemCollectionViewCell: UICollectionViewCell {
         self.userImageView.setImage(url: viewModel.userImageUrl)
         self.dateLabel.text = viewModel.date
         self.dateLabel.textColor = UIColor.FeedItemCell.date
-        self.photoView.update(photos: viewModel.photos, totalHeight: self.photosHolderHeight)
-        self.layout()
-        self.userImageView.toCirle()
-        self.roundCorner(radius: Constants.defaultCornerRadius)
+        let photoViewHeight = PhotoView.determineHeight(photos: viewModel.photos, containerWidth: viewModel.containerWidth, index: viewModel.index)
+        self.photoView.update(photos: viewModel.photos, totalHeight: photoViewHeight)
+        
+        self.showMoreButtonHeightConstraint.constant = viewModel.shouldShowMoreButton ? Constants.showMoreButtonHeight : 0
+        self.showMoreButtonTopConstraint.constant = viewModel.shouldShowMoreButton ? 0 : 0
+        self.showMoreButtonBottomConstraint.constant = viewModel.shouldShowMoreButton ? Constants.showMoreButtonBottom : Constants.showMoreButtonBottomDefault
+        
+        self.textViewTopConstraint.constant = viewModel.text.isEmpty ? 0 : Constants.textViewTop
+        self.textViewHeight.constant = viewModel.textHeight
+        self.photosHolderViewHeightConstraint.constant = photoViewHeight
     }
-}
-
-// MARK: - Static
-extension FeedItemCollectionViewCell {
+    
     static func determineHeight(text: String,
                                 shouldShowMoreButton: Bool,
                                 textHeight: CGFloat,
@@ -179,77 +176,31 @@ extension FeedItemCollectionViewCell {
     }
 }
 
+// MARK: - Actions
+private extension FeedItemCollectionViewCell {
+    @IBAction func showMoreAction(sender: UIButton) {
+        didTapShowMoreButton?()
+    }
+}
+
 // MARK: - Private
 private extension FeedItemCollectionViewCell {
-    func layout() {
-        let textViewWidth = self.bounds.width - (12 * 2)
-        let textViewEmpty = self.textView.text.isEmpty
-        let textViewYOrigin = textViewEmpty ? 58 - Constants.textViewTop : 58
-        let showMoreYOrigin = textViewYOrigin + self.textViewHeight
-        let showMoreHeight = self.shouldShowMoreButton ? Constants.showMoreButtonHeight : 0
-        let showMoreButtonBottom = showMoreYOrigin + (self.shouldShowMoreButton ? Constants.showMoreButtonBottom : Constants.showMoreButtonBottomDefault)
-        let feedInfoYOrigin = self.photosHolderHeight + showMoreButtonBottom + Constants.statsTop
-
-        self.userImageView.frame = CGRect(x: 12, y: 12, width: 36, height: 36)
-        self.usernameLabel.frame.origin = CGPoint(x: 58, y: 14)
-        self.dateLabel.frame.origin = CGPoint(x: 58, y: 33.5)
-        [self.usernameLabel, self.dateLabel].forEach { $0.sizeToFit() }
-        self.textView.frame = CGRect(x: 12, y: textViewYOrigin, width: textViewWidth, height: self.textViewHeight)
-        self.showMoreButton.frame = CGRect(x: 12, y: showMoreYOrigin, width: textViewWidth, height: showMoreHeight)
-        self.photosHolderView.frame = CGRect(x: 12, y: showMoreButtonBottom, width: textViewWidth, height: self.photosHolderHeight)
-        self.feedInfoHolderView.frame = CGRect(x: 0, y: feedInfoYOrigin, width: self.bounds.width, height: Constants.statsHeight)
-        let infoWidth = self.bounds.width * self.leftInfoAspectRatio / 3
-        let infoLabelsImages = [(self.likesCountLabel, self.likesImageView), (self.commentsCountLabel, self.commentsImageView), (self.repostsCountLabel, self.repostsImageView)]
-        
-        var acc: CGFloat = 19
-        for  (label, imageView) in infoLabelsImages {
-            imageView.frame = CGRect(x: acc, y: 0, width: Constants.infoButtonWidth, height: Constants.statsHeight)
-            let labelOrigin = acc + 5 + Constants.infoButtonWidth
-            label.sizeToFit()
-            label.frame.origin = CGPoint(x: labelOrigin, y: (Constants.statsHeight - label.frame.height) / 2)
-            acc += infoWidth
-        }
-        
-        self.viewsCountLabel.sizeToFit()
-        self.viewsCountLabel.frame.origin = CGPoint(x: self.bounds.width - 5 - self.viewsCountLabel.bounds.width, y: (Constants.statsHeight - viewsCountLabel.frame.height) / 2)
-        self.viewsImageView.frame = CGRect(x: viewsCountLabel.frame.origin.x - 5 - Constants.infoButtonWidth, y: 0, width: Constants.infoButtonWidth, height: Constants.statsHeight)
-    }
-    
     func configureUI() {
-        [self.userImageView,
-         self.usernameLabel,
-         self.dateLabel,
-         self.textView,
-         self.feedInfoHolderView,
-         self.showMoreButton,
-         self.photosHolderView]
-            .forEach { self.addSubview($0) }
-        
-        
-        [self.likesCountLabel,
-         self.commentsCountLabel,
-         self.repostsCountLabel,
-         self.viewsCountLabel,
-         self.viewsImageView,
-         self.likesImageView,
-         self.repostsImageView,
-         self.commentsImageView]
-            .forEach { self.feedInfoHolderView.addSubview($0) }
-        
+        self.roundCorner(radius: Constants.defaultCornerRadius)
         self.contentView.backgroundColor = .white
+        self.userImageView.toCirle()
         
         [self.likesImageView, self.commentsImageView, self.repostsImageView, self.viewsImageView, self.userImageView]
             .forEach {
-                $0.contentMode = .scaleAspectFit
-                $0.tintColor = UIColor.Feeds.statsImage
+                $0?.contentMode = .scaleAspectFit
+                $0?.tintColor = UIColor.Feeds.statsImage
         }
         
         [self.likesCountLabel,
          self.commentsCountLabel,
          self.repostsCountLabel]
             .forEach {
-                $0.textColor = UIColor.FeedItemCell.likes
-                $0.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+                $0?.textColor = UIColor.FeedItemCell.likes
         }
         
         self.viewsCountLabel.textColor = UIColor.FeedItemCell.views
@@ -258,19 +209,8 @@ private extension FeedItemCollectionViewCell {
         self.userImageView.backgroundColor = .lightGray
         self.photosHolderView.addSubview(self.photoView, with: ConstraintsSettings.zero)
         self.textView.delegate = self
-        self.showMoreButton.addTarget(self, action: #selector(showMoreAction), for: .touchUpInside)
-        self.usernameLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        self.dateLabel.font = UIFont.systemFont(ofSize: 12)
     }
 }
-
-// MARK: - Actions
-private extension FeedItemCollectionViewCell {
-    @objc func showMoreAction(sender: UIButton) {
-        self.didTapShowMoreButton?()
-    }
-}
-
 
 // MARK: - UITextViewDelegate
 extension FeedItemCollectionViewCell: UITextViewDelegate {
@@ -278,4 +218,3 @@ extension FeedItemCollectionViewCell: UITextViewDelegate {
         return true
     }
 }
-
